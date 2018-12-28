@@ -7,20 +7,38 @@ namespace rocksdb {
 
 class PDB : public PersistentObject {
 public:
-    PDB(uuid_t id, Options& options, string& db_path) :
+    PDB(uuid_t id) :
         PersistentObject(id) {
-        void *t = alloc->alloc(sizeof(DB));
-        DB *obj = (DB *)t;
-        db = new(obj) DB();
 
-        Status status = DB::Open(options, db_path, &db);
+        // Configure DB
+        Options options;
+        string db_path = string(PMEM_PATH) + "rocksdb";
+        options.create_if_missing = true;
+        options.error_if_exists = true;
+        options.compression = kNoCompression;
+        options.manual_wal_flush = true;
+        //options.max_background_jobs = 0;
+        options.db_write_buffer_size = (off_t)8 << 30;
+
+        pWriteOptions.disableWAL = true;
+        pWriteOptions.sync = false;
+
+        // TODO use allocator inside DB
+        DB::Open(options, db_path, &db);
+    }
+
+    Status Get(const ReadOptions &options, const Slice& key,
+            string* value) {
+        return db->Get(options, key, value);
     }
 
     Status Put(const WriteOptions &options, const Slice& key,
             const Slice& value) {
-        Savitar_thread_notify(5, this, PutDefaultColumnFamily,
-                options, key, value);
-        Status st = db->Put(options, key, value);
+        // <compiler>
+        Savitar_thread_notify(4, this, PutDefaultColumnFamily,
+                &key, &value);
+        // </compiler>
+        Status st = db->Put(pWriteOptions, key, value);
         // DEBUG
         Savitar_thread_wait(this, this->log);
         // DEBUG
@@ -54,26 +72,22 @@ public:
 
     uint64_t Log(uint64_t tag, uint64_t *args) {
         int vector_size = 0;
-        ArgVector vector[4]; // Max arguments of the class
+        ArgVector vector[3]; // Max arguments of the class
 
         switch (tag) {
             case PutDefaultColumnFamily:
                 {
-                // TODO
                 vector[0].addr = &tag;
                 vector[0].len = sizeof(tag);
-                // WriteOptions : options
-                vector[1].addr = (void *)args[0];
-                vector[1].len = sizeof(WriteOptions);
                 // Slice : key
-                Slice *key = dynamic_cast<Slice *>(args[1]);
-                vector[2].addr = (void *)key->data();
-                vector[2].len = key->size();
+                Slice *key = (Slice *)args[0];
+                vector[1].addr = (void *)key->data();
+                vector[1].len = key->size();
                 // Slice : value
-                Slice *value = dynamic_cast<Slice *>(args[2]);
-                vector[3].addr = (void *)value->data();
-                vector[3].len = value->size();
-                vector_size = 4;
+                Slice *value = (Slice *)args[1];
+                vector[2].addr = (void *)value->data();
+                vector[2].len = value->size();
+                vector_size = 3;
                 }
                 break;
             case PutColumnFamilyHandle:
@@ -101,13 +115,10 @@ public:
             case PutDefaultColumnFamily:
                 {
                 char *ptr = (char *)args;
-                WriteOptions *options = (WriteOptions *)ptr;
-                ptr += sizeof(WriteOptions);
                 const char *key = ptr;
                 const char *value = ptr + strlen(key);
-                if (!dry) db->Put(*options, key, value);
-                bytes_processed = sizeof(WriteOptions) +
-                    strlen(key) + strlen(value) + 2;
+                if (!dry) db->Put(pWriteOptions, key, value);
+                bytes_processed = strlen(key) + strlen(value) + 2;
                 }
                 break;
             case PutColumnFamilyHandle:
@@ -139,6 +150,8 @@ public:
 
 private:
     DB *db = NULL;
+    WriteOptions pWriteOptions;
+
     // <compiler>
     enum MethodTags {
         PutDefaultColumnFamily = 1,
