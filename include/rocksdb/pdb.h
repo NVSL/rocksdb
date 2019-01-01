@@ -18,7 +18,7 @@ public:
         options.compression = kNoCompression;
         options.manual_wal_flush = true;
         //options.max_background_jobs = 0;
-        options.db_write_buffer_size = (off_t)8 << 30;
+        //options.db_write_buffer_size = (off_t)8 << 30;
 
         pWriteOptions.disableWAL = true;
         pWriteOptions.sync = false;
