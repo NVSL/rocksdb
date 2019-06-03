@@ -46,6 +46,8 @@ public:
     }
 
     // <compiler>
+    PDB() : PersistentObject(true) { }
+
     static PersistentObject *BaseFactory(uuid_t id) {
         ObjectAlloc *alloc = GlobalAlloc::getInstance()->newAllocator(id);
         void *temp = alloc->alloc(sizeof(PDB));
