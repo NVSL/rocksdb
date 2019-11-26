@@ -2,6 +2,7 @@
 #include <uuid/uuid.h>
 #include <savitar.hpp>
 #include "rocksdb/db.h"
+#include <signal.h>
 
 namespace rocksdb {
 
@@ -11,21 +12,23 @@ public:
         PersistentObject(id) {
 
         // Configure DB
-        Options options;
+        Options options(alloc);
         string db_path = string(PMEM_PATH) + "rocksdb";
         options.create_if_missing = true;
         options.error_if_exists = true;
         options.compression = kNoCompression;
         options.manual_wal_flush = true;
+        options.statistics = rocksdb::CreateDBStatistics();
         //options.max_background_jobs = 0;
-        //options.db_write_buffer_size = (off_t)8 << 30;
+        options.write_buffer_size = (off_t)4 << 30;
 
         pWriteOptions.disableWAL = true;
         pWriteOptions.sync = false;
 
-        // TODO use allocator inside DB
         DB::Open(options, db_path, &db);
     }
+
+    void Close() { raise(SIGUSR1); }
 
     Status Get(const ReadOptions &options, const Slice& key,
             string* value) {

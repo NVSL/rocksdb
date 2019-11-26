@@ -22,6 +22,8 @@
 #include "util/sst_file_manager_impl.h"
 #include "util/sync_point.h"
 
+ObjectAlloc *prontoAlloc = NULL; // TODO per instance allocator
+
 namespace rocksdb {
 Options SanitizeOptions(const std::string& dbname,
                         const Options& src) {

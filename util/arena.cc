@@ -23,6 +23,12 @@
 #include "rocksdb/env.h"
 #include "util/logging.h"
 #include "util/sync_point.h"
+#include <ckpt_alloc.hpp>
+
+extern ObjectAlloc *prontoAlloc;
+
+#undef MAP_HUGETLB
+#undef ROCKSDB_MALLOC_USABLE_SIZE
 
 namespace rocksdb {
 
@@ -76,7 +82,8 @@ Arena::~Arena() {
     tracker_->FreeMem();
   }
   for (const auto& block : blocks_) {
-    delete[] block;
+    prontoAlloc->dealloc(block);
+    //delete[] block;
   }
 
 #ifdef MAP_HUGETLB
@@ -215,7 +222,8 @@ char* Arena::AllocateNewBlock(size_t block_bytes) {
   //   via RAII.
   blocks_.emplace_back(nullptr);
 
-  char* block = new char[block_bytes];
+  //char* block = new char[block_bytes];
+  char* block = static_cast<char*>(prontoAlloc->alloc(block_bytes));
   size_t allocated_size;
 #ifdef ROCKSDB_MALLOC_USABLE_SIZE
   allocated_size = malloc_usable_size(block);

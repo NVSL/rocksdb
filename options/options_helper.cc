@@ -1613,7 +1613,7 @@ std::unordered_map<std::string, InfoLogLevel>
         {"FATAL_LEVEL", InfoLogLevel::FATAL_LEVEL},
         {"HEADER_LEVEL", InfoLogLevel::HEADER_LEVEL}};
 
-ColumnFamilyOptions OptionsHelper::dummy_cf_options;
+//ColumnFamilyOptions OptionsHelper::dummy_cf_options;
 CompactionOptionsFIFO OptionsHelper::dummy_comp_options;
 LRUCacheOptions OptionsHelper::dummy_lru_cache_options;
 CompactionOptionsUniversal OptionsHelper::dummy_comp_options_universal;

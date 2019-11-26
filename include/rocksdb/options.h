@@ -23,6 +23,9 @@
 #include "rocksdb/universal_compaction.h"
 #include "rocksdb/version.h"
 #include "rocksdb/write_buffer_manager.h"
+#include <ckpt_alloc.hpp>
+
+extern ObjectAlloc *prontoAlloc;
 
 #ifdef max
 #undef max
@@ -945,14 +948,21 @@ struct DBOptions {
   bool manual_wal_flush = false;
 };
 
+class ProntoAlloc {
+public:
+    ProntoAlloc(ObjectAlloc *alloc = nullptr) {
+        prontoAlloc = alloc;
+    }
+};
+
 // Options to control the behavior of a database (passed to DB::Open)
-struct Options : public DBOptions, public ColumnFamilyOptions {
+struct Options : public ProntoAlloc, public DBOptions, public ColumnFamilyOptions {
   // Create an Options object with default values for all fields.
-  Options() : DBOptions(), ColumnFamilyOptions() {}
+  Options(ObjectAlloc *alloc = nullptr) : ProntoAlloc(alloc), DBOptions(), ColumnFamilyOptions() {}
 
   Options(const DBOptions& db_options,
           const ColumnFamilyOptions& column_family_options)
-      : DBOptions(db_options), ColumnFamilyOptions(column_family_options) {}
+      : ProntoAlloc(), DBOptions(db_options), ColumnFamilyOptions(column_family_options) {}
 
   // The function recovers options to the option as in version 4.6.
   Options* OldDefaults(int rocksdb_major_version = 4,

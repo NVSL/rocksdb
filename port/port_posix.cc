@@ -23,6 +23,9 @@
 #include <unistd.h>
 #include <cstdlib>
 #include "util/logging.h"
+#include <ckpt_alloc.hpp>
+
+extern ObjectAlloc *prontoAlloc;
 
 namespace rocksdb {
 namespace port {
@@ -186,6 +189,8 @@ int GetMaxOpenFiles() {
 }
 
 void *cacheline_aligned_alloc(size_t size) {
+  if (prontoAlloc != NULL) return prontoAlloc->alloc(size);
+  // Note: support for dummy, static buffers
 #if __GNUC__ < 5 && defined(__SANITIZE_ADDRESS__)
   return malloc(size);
 #elif ( _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600 || defined(__APPLE__))
@@ -198,7 +203,10 @@ void *cacheline_aligned_alloc(size_t size) {
 }
 
 void cacheline_aligned_free(void *memblock) {
-  free(memblock);
+  if (prontoAlloc != NULL) {
+    prontoAlloc->dealloc(memblock);
+  }
+  else free(memblock);
 }
 
 
